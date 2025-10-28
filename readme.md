@@ -1,0 +1,1 @@
+python -m code_v2.__main__
