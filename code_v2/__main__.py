@@ -1,6 +1,7 @@
 from code_v2.scrapping_arxiv import scrapping_arxiv
 from code_v2.scrapping_reddit import scrapping_reddit
 from classe.Corpus import Corpus
+import pandas as pd
 
 def save_corpus(sujet):
     a, b = scrapping_reddit(sujet), scrapping_arxiv(sujet)
@@ -20,5 +21,11 @@ if __name__=="__main__":
 
     #save_corpus(sujet)
     load_corpus(sujet)
+
+    print(sujet_corpus)
+    
+    # Liste de documents triés par titre et date
+    sorted_docs = sujet_corpus.sort_title_and_date()
+    print(pd.DataFrame.from_dict({k: vars(v) for k, v in sorted_docs.items()}, orient='index'))
     
     

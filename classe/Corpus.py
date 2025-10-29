@@ -33,5 +33,13 @@ class Corpus:
             self.documents = loaded_corpus.documents
             self.authors = loaded_corpus.authors
             self.id_counter = loaded_corpus.id_counter 
-            
+    
+    def __repr__(self):
+        return f"Le sujet '{self.nom}' chargé avec {len(self.documents)} documents et {len(self.authors)} auteurs."
+    
+    def __getattribute__(self, name):
+        return super().__getattribute__(name)
+    
+    def sort_title_and_date(self):
+        return dict(sorted(self.documents.items(), key=lambda item: (item[1].titre, item[1].date_publication)))
 
