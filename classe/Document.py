@@ -7,6 +7,10 @@ class Document:
         self.date_publication = date_publication
         self.url = url
         self.texte = texte
+        self.type = None
 
     def __str__(self):
         return f"{self.titre}"
+    
+    def get_type(self):
+        return self.type

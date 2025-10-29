@@ -23,11 +23,11 @@ class Corpus:
             self.authors[author_name].nb_docs += 1
         
     def save(self, filename: str):
-        with open(filename, 'wb') as f:
+        with open(f'./code/data/{filename}', 'wb') as f:
             pickle.dump(self, f)
 
     def load(self, filename: str):
-        with open(filename, 'rb') as f:
+        with open(f'./code/data/{filename}', 'rb') as f:
             loaded_corpus = pickle.load(f)
             self.nom = loaded_corpus.nom
             self.documents = loaded_corpus.documents
