@@ -10,5 +10,4 @@ class ArxivDocument(Document):
     def __str__(self):
         return f"Objet ArxivDocument, hérité de Document : {self.titre} avec {self.co_auteur}"
     
-    def __getattribute__(self, name):
-        return super().__getattribute__(name)   
+    

@@ -4,6 +4,7 @@ from typing import Dict
 from classe.Document import Document
 from classe.Author import Author
 import re
+import pandas as pd
 
 class Corpus:
     _instance = None
@@ -50,7 +51,7 @@ class Corpus:
         """Représentation textuelle du corpus."""
         return f"Le sujet '{self.nom}' chargé avec {len(self.documents)} documents et {len(self.authors)} auteurs."
     
-    def __getattribute__(self, name):
+    def __getattribute__(self, name: str):
         """Permet d'accéder aux attributs de l'instance."""
         return super().__getattribute__(name)
     
@@ -63,3 +64,19 @@ class Corpus:
         pattern = re.compile(re.escape(keyword), re.IGNORECASE)
         return {doc_id: doc for doc_id, doc in self.documents.items() if pattern.search(doc.titre) or pattern.search(doc.texte)}
 
+    def concorde(self, keyword: str, size: int = 30):
+        """Génère des concordances pour un mot-clé donné dans les documents du corpus."""
+        pattern = re.compile(re.escape(keyword), re.IGNORECASE)
+        concordances = pd.DataFrame(columns=['Document ID', 'left', 'keyword' ,'right'])
+
+        for doc_id, doc in self.documents.items():
+            for match in pattern.finditer(doc.texte):
+                # Extraction du texte autour du mot-clé
+                start, end = match.span()
+                left_context = doc.texte[max(0, start - size):start].strip()
+                right_context = doc.texte[end:(end + size)].strip()
+                
+                # Ajout de la concordance au DataFrame
+                concordances = pd.concat([concordances, pd.DataFrame({'Document ID': [doc_id], 'left': [left_context], 'keyword': [match.group()], 'right': [right_context]})], ignore_index=True)
+        
+        return concordances

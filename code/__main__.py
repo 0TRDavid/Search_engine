@@ -35,7 +35,11 @@ if __name__=="__main__":
     #print(sujet_corpus.documents[1].get_type())
 
     # Exemple de recherche dans le corpus
-    results = sujet_corpus.search("learning")
+    """ results = sujet_corpus.search("learning")
     print(f"Documents trouvés pour le mot-clé 'learning': {len(results)}")
     for doc_id, doc in results.items():
-        print(f"ID: {doc_id}, Titre: {doc.titre}")
+        print(f"ID: {doc_id}, Titre: {doc.titre}")"""
+
+    # Exemple de génération de concordances
+    concordances_df = sujet_corpus.concorde("learning", size=30)
+    print(concordances_df)  

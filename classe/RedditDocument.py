@@ -9,7 +9,4 @@ class RedditDocument(Document):
     
     def __str__(self):
         return f"Objet RedditDocument, hérité de Document : {self.titre} avec {self.nb_comments} commentaires"
-    
-    def __getattribute__(self, name):
-        return super().__getattribute__(name)   
         
