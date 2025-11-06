@@ -1,1 +1,6 @@
-python -m code_v2.__main__
+# Moteur de recherche
+
+## Lancement du code 
+```
+python -m code.__main__
+```
