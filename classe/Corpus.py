@@ -80,3 +80,21 @@ class Corpus:
                 concordances = pd.concat([concordances, pd.DataFrame({'Document ID': [doc_id], 'left': [left_context], 'keyword': [match.group()], 'right': [right_context]})], ignore_index=True)
         
         return concordances
+    
+    def clean_texte(self):
+        """Nettoie le texte de tous les documents du corpus en supprimant les caractères spéciaux et retour à la ligne."""
+        for doc in self.documents.values():
+            cleaned_text = re.sub(r'http\S+|www\.\S+', '', doc.texte) # Nettoie les urls
+            cleaned_text = re.sub(r'\s+', ' ', cleaned_text)  # Remplace les espaces multiples par un seul espace
+            cleaned_text = re.sub(r'[^a-zA-Z0-9\s]', '', cleaned_text).lower()
+            cleaned_text = re.sub(r'\n+', ' ', cleaned_text).strip()
+            doc.texte = cleaned_text
+    
+    def vocabulaire(self):
+        """Construit le vocabulaire du corpus."""
+        vocab = set()
+        for doc in self.documents.values():
+            words = re.findall(r'\b\w+\b', doc.texte.lower())
+            vocab.update(words)
+        return vocab
+            

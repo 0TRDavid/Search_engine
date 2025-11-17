@@ -41,5 +41,9 @@ if __name__=="__main__":
         print(f"ID: {doc_id}, Titre: {doc.titre}")"""
 
     # Exemple de génération de concordances
-    concordances_df = sujet_corpus.concorde("learning", size=30)
-    print(concordances_df)  
+    """concordances_df = sujet_corpus.concorde("learning", size=30)
+    print(concordances_df)  """
+
+    # Exemple de représentation textuelle du corpus
+    sujet_corpus.clean_texte()
+    print(sujet_corpus.vocabulaire())
