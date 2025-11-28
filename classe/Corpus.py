@@ -1,7 +1,7 @@
-import pickle
 from classe.Document import Document
 from classe.Author import Author
 import re
+import pickle
 import pandas as pd
 from scipy.sparse import csr_matrix
 import numpy as np
@@ -82,84 +82,85 @@ class Corpus:
         return concordances
     
     def clean_texte(self):
-        """Nettoie le texte de tous les documents du corpus en supprimant les caractères spéciaux et retour à la ligne."""
+        """Nettoie le texte : minuscules, suppression ponctuation/URL, gestion accents."""
         for doc in self.documents.values():
-            cleaned_text = re.sub(r'http\S+|www\.\S+', '', doc.texte) # Nettoie les urls
-            cleaned_text = re.sub(r'\s+', ' ', cleaned_text)  # Remplace les espaces multiples par un seul espace
-            cleaned_text = re.sub(r'[^a-zA-Z0-9\s]', '', cleaned_text).lower()
-            cleaned_text = re.sub(r'\n+', ' ', cleaned_text).strip()
-            doc.texte = cleaned_text
-    
-    def build_vocab_et_frequences(self):
-        """
-        Parcourt le corpus une seule fois et construit :
-        - self._vocab : set de tous les mots
-        - self._term_counts : dict avec nombre total d'occurrences
-        - self._doc_counts : dict avec nombre de documents contenant le mot
-        """
-        self._vocab = set()
-        self._term_counts = {}
-        self._doc_counts = {}
+            texte = doc.texte.lower() # Mise en minuscule
+            texte = re.sub(r'http\S+|www\.\S+', '', texte) # Supprime les URLs
+            texte = re.sub(r'[^\w\s]', ' ', texte) # Remplace ponctuation par espace
+            texte = re.sub(r'\s+', ' ', texte).strip() # Remplace multiples espaces par un seul
+            doc.texte = texte
 
+    def construire_vocab(self):
+        """
+        Construire le dictionnaire vocabulaire (vocab).
+        Les clefs sont les mots, la valeur est un dico avec l'id unique.
+        """
+        # Récupération de tous les mots uniques
+        mots_uniques = set()
         for doc in self.documents.values():
-            words = re.findall(r'\b\w+\b', doc.texte.lower())
-            self._vocab.update(words)
-            seen_in_doc = set()
-            for word in words:
-                self._term_counts[word] = self._term_counts.get(word, 0) + 1
-                if word not in seen_in_doc:
-                    self._doc_counts[word] = self._doc_counts.get(word, 0) + 1
-                    seen_in_doc.add(word)
+            mots_uniques.update(doc.texte.split())
+        mots_tries = sorted(list(mots_uniques))
 
-    def get_vocabulaire(self):
-        """Renvoie la liste triée du vocabulaire déjà construit."""
-        return sorted(self._vocab)
+        # Création du dictionnaire vocab
+        self.vocab = {}
+        for idx, mot in enumerate(mots_tries):
+            self.vocab[mot] = {
+                'id': idx,            
+                'total_occurrence': 0,   
+                'doc_frequency': 0       
+            }
 
-    def frequences(self):
+    def mat_TF(self):
         """
-        Renvoie un DataFrame avec :
-        - id : identifiant unique du mot
-        - mot : le mot du vocabulaire
-        - term_frequency : nombre total d'occurrences dans le corpus
-        - document_frequency : nombre de documents contenant le mot
-        """
-        vocab = list(self._vocab)
-        freq_df = pd.DataFrame({
-            'id': range(len(vocab)),  # identifiant unique
-            'mot': vocab,
-            'term_frequency': [self._term_counts[word] for word in vocab],
-            'document_frequency': [self._doc_counts[word] for word in vocab]
-        }).sort_values(by='term_frequency', ascending=False).reset_index(drop=True)
-
-        return freq_df
-
-    def build_tf_matrix_from_vocab(self):
-        """
-        Construit la matrice Documents x Termes (TF) en utilisant directement
-        la liste de vocabulaire et les identifiants fournis par frequences().
-        """
-        # Récupérer le DataFrame des fréquences
-        freq_df = self.frequences()
-
-        # Créer un dictionnaire mot -> id
-        vocab = {row['mot']: row['id'] for _, row in freq_df.iterrows()}
-        n_docs = len(self.documents)
-        n_terms = len(vocab)
+        Construire la matrice Documents x Mots (TF).
+        """           
+        n_docs, n_mots = len(self.documents), len(self.vocab)
         rows, cols, data = [], [], []
 
-        # Parcourir les documents et compter les occurrences
         for doc_idx, doc in enumerate(self.documents.values()):
-            words = re.findall(r'\b\w+\b', doc.texte.lower())
-            doc_term_count = {}
-            for word in words:
-                if word in vocab:
-                    term_id = vocab[word]
-                    doc_term_count[term_id] = doc_term_count.get(term_id, 0) + 1
-            for term_id, count in doc_term_count.items():
+            mots_list = doc.texte.split()          
+            compte_local = {}
+
+            for mot in mots_list:
+                if mot in self.vocab:
+                    mot_id = self.vocab[mot]['id']
+                    # On utilise collections.Counter ou un dictionnaire pour compter facilement:
+                    compte_local[mot_id] = compte_local.get(mot_id, 0) + 1
+            
+            # Remplissage des listes pour la matrice sparse
+            for mot_id, count in compte_local.items():
                 rows.append(doc_idx)
-                cols.append(term_id)
+                cols.append(mot_id)
                 data.append(count)
 
-        # Construire la matrice sparse
-        self.TF = csr_matrix((data, (rows, cols)), shape=(n_docs, n_terms), dtype=int)
-        return self.TF
+        # Création de la matrice (sparse matrix)
+        self.mat_TF = csr_matrix((data, (rows, cols)), shape=(n_docs, n_mots), dtype=int)
+        
+        return self.mat_TF # Retourner la matrice pour un usage immédiat est aussi une bonne pratique
+
+    def calculer_stats_vocabulaire(self):
+        """
+        À partir de la matrice mat_TF, calculer les stats globales 
+        et mettre à jour le dictionnaire vocab.
+        """
+        total_occurrences = self.mat_TF.sum(axis=0).A1 
+        doc_frequencies = self.mat_TF.getnnz(axis=0)
+
+        for mot, infos in self.vocab.items():
+            #print(infos['id'])
+            mot_id = infos['id']
+            infos['total_occurrence'] = int(total_occurrences[mot_id])
+            infos['doc_frequency'] = int(doc_frequencies[mot_id])
+
+    def mat_TFxIDF(self):
+        """
+        Calcule et retourne la matrice TF-IDF à partir de la matrice TF.
+        """
+        N, n_mots = len(self.documents), len(self.vocab)
+        df_vector = np.zeros(n_mots) #Récupération des fréquences documentaires (DF) pour tous les mots
+        for mot, infos in self.vocab.items():
+            df_vector[infos['id']] = infos['doc_frequency']
+
+        idf_vector = np.log(N / (df_vector + 1)) #Calcul du vecteur IDF pour tous les mots
+        self.mat_TF_IDF = self.mat_TF.multiply(idf_vector) #Calcul de la matrice TF-IDF
+        return self.mat_TF_IDF

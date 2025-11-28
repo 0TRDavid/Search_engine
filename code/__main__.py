@@ -46,10 +46,17 @@ if __name__=="__main__":
 
     # Exemple de représentation textuelle du corpus
     sujet_corpus.clean_texte()
-    sujet_corpus.build_vocab_et_frequences()
-    # print(sujet_corpus.frequences())
+    sujet_corpus.construire_vocab()
 
-    print(sujet_corpus.build_tf_matrix_from_vocab())
+    """print(sujet_corpus.vocab)
+    print(len(sujet_corpus.vocab))"""
 
+    sujet_corpus.mat_TF()
+    sujet_corpus.calculer_stats_vocabulaire()
+    #print(sujet_corpus.vocab)
+
+    sujet_corpus.mat_TFxIDF()
+    #print(sujet_corpus.mat_TFxIDF())
+    
 
     
