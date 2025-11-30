@@ -1,4 +1,4 @@
-from classe.Document import Document
+from src.Document import Document
 from datetime import datetime
 
 class RedditDocument(Document):

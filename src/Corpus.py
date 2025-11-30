@@ -1,5 +1,5 @@
-from classe.Document import Document
-from classe.Author import Author
+from src.Document import Document
+from src.Author import Author
 import re
 import pickle
 import pandas as pd
@@ -15,12 +15,17 @@ class Corpus:
         return cls._instance
     
     def __init__(self, corpus: str):
-        if hasattr(self, 'initialized') and self.initialized:
+        if not hasattr(self, 'initialized'):
             self.initialized = True
             self.nom = corpus
             self.documents = {}
             self.authors = {}
             self.id_counter = 0
+            # ajout de nouveaux attributs
+            self.vocab = None
+            self.mat_TF = None
+            self.mat_TF_IDF = None
+            self.cleaned = True
 
     def add_document(self, document: Document):
         """Ajoute un document au corpus et met à jour les informations de l'auteur."""
@@ -35,12 +40,12 @@ class Corpus:
         
     def save(self, filename: str):
         """Sauvegarde le corpus dans un fichier pickle."""
-        with open(f'./code/data/{filename}', 'wb') as f:
+        with open(f'./data/{filename}', 'wb') as f:
             pickle.dump(self, f)
 
     def load(self, filename: str):
         """Charge un corpus depuis un fichier pickle."""
-        with open(f'./code/data/{filename}', 'rb') as f:
+        with open(f'./data/{filename}', 'rb') as f:
             loaded_corpus = pickle.load(f)
             self.nom = loaded_corpus.nom
             self.documents = loaded_corpus.documents
@@ -50,11 +55,7 @@ class Corpus:
     def __repr__(self):
         """Représentation textuelle du corpus."""
         return f"Le sujet '{self.nom}' chargé avec {len(self.documents)} documents et {len(self.authors)} auteurs."
-    
-    def __getattribute__(self, name: str):
-        """Permet d'accéder aux attributs de l'instance."""
-        return super().__getattribute__(name)
-    
+        
     def sort_title_and_date(self):
         """Trie les documents par titre et date de publication."""
         return dict(sorted(self.documents.items(), key=lambda item: (item[1].titre, item[1].date_publication)))
@@ -89,12 +90,17 @@ class Corpus:
             texte = re.sub(r'[^\w\s]', ' ', texte) # Remplace ponctuation par espace
             texte = re.sub(r'\s+', ' ', texte).strip() # Remplace multiples espaces par un seul
             doc.texte = texte
+            self.cleaned = True
 
     def construire_vocab(self):
         """
         Construire le dictionnaire vocabulaire (vocab).
         Les clefs sont les mots, la valeur est un dico avec l'id unique.
         """
+        # Nettoyage des textes
+        if not hasattr(self, 'cleaned') or not self.cleaned:
+            self.clean_texte()
+
         # Récupération de tous les mots uniques
         mots_uniques = set()
         for doc in self.documents.values():
@@ -110,10 +116,13 @@ class Corpus:
                 'doc_frequency': 0       
             }
 
-    def mat_TF(self):
+    def create_mat_TF(self):
         """
         Construire la matrice Documents x Mots (TF).
-        """           
+        """
+        # Construction de la liste vocabulaire
+        self.construire_vocab()
+
         n_docs, n_mots = len(self.documents), len(self.vocab)
         rows, cols, data = [], [], []
 
@@ -136,13 +145,16 @@ class Corpus:
         # Création de la matrice (sparse matrix)
         self.mat_TF = csr_matrix((data, (rows, cols)), shape=(n_docs, n_mots), dtype=int)
         
-        return self.mat_TF # Retourner la matrice pour un usage immédiat est aussi une bonne pratique
+        return self.mat_TF 
 
     def calculer_stats_vocabulaire(self):
         """
         À partir de la matrice mat_TF, calculer les stats globales 
         et mettre à jour le dictionnaire vocab.
         """
+        if self.mat_TF is None:
+             self.create_mat_TF()
+
         total_occurrences = self.mat_TF.sum(axis=0).A1 
         doc_frequencies = self.mat_TF.getnnz(axis=0)
 
@@ -156,6 +168,9 @@ class Corpus:
         """
         Calcule et retourne la matrice TF-IDF à partir de la matrice TF.
         """
+        if self.mat_TF is None:
+             self.create_mat_TF()
+
         N, n_mots = len(self.documents), len(self.vocab)
         df_vector = np.zeros(n_mots) #Récupération des fréquences documentaires (DF) pour tous les mots
         for mot, infos in self.vocab.items():
@@ -164,3 +179,82 @@ class Corpus:
         idf_vector = np.log(N / (df_vector + 1)) #Calcul du vecteur IDF pour tous les mots
         self.mat_TF_IDF = self.mat_TF.multiply(idf_vector) #Calcul de la matrice TF-IDF
         return self.mat_TF_IDF
+    
+    def vectoriser_requete(self, query: str):
+        """
+        Transforme une requête en un vecteur de poids TF-IDF.
+        Le vecteur est basé sur le vocabulaire et les IDF du corpus.
+        """
+        # Nettoyage de la requête (similaire à clean_texte)
+        query = query.lower()
+        query = re.sub(r'[^\w\s]', ' ', query)
+        query = re.sub(r'\s+', ' ', query).strip()
+        
+        mots_requete = query.split()
+        vecteur_requete = np.zeros(len(self.vocab))
+        
+        # Calcul des Term Frequencies (TF) locaux pour la requête
+        tf_local = {}
+        for mot in mots_requete:
+            if mot in self.vocab:
+                mot_id = self.vocab[mot]['id']
+                tf_local[mot_id] = tf_local.get(mot_id, 0) + 1
+                
+        # Application des poids TF-IDF
+        # Pour chaque mot de la requête, on calcule le poids TF-IDF: TF * IDF
+        for mot_id, tf in tf_local.items():
+            # Récupération de l'IDF (log(N / (df + 1)))
+            N = len(self.documents)
+            df = self.vocab[list(self.vocab.keys())[mot_id]]['doc_frequency']
+            idf = np.log(N / (df + 1))
+            
+            # Poids TF-IDF dans le vecteur requête
+            vecteur_requete[mot_id] = tf * idf
+            
+        return vecteur_requete 
+    
+    def search_engine(self, query: str, top_n: int = 10):
+        """
+        Recherche des documents similaires à la requête de l'utilisateur.
+
+        Args:
+            query (str): La requête de recherche.
+            top_n (int): Le nombre maximum de meilleurs résultats à retourner.
+        """
+        # Construction de la matrice TFxIDF
+        if self.mat_TF_IDF is None:
+            self.mat_TFxIDF()
+
+        vecteur_requete = self.vectoriser_requete(query)
+        
+        # Si le vecteur requête est nul, aucun mot n'est dans le vocabulaire
+        if np.linalg.norm(vecteur_requete) == 0:
+            print("Aucun mot de votre requête n'a été trouvé dans le vocabulaire du corpus.")
+            return []
+
+        produits_scalaires = self.mat_TF_IDF.dot(vecteur_requete) # Calculer le produit scalaire (numérateur de la similarité cosinus)
+        doc_ids = list(self.documents.keys()) #Lier les ID aux documents
+        norme_requete = np.linalg.norm(vecteur_requete) # Calculer la similarité cosinus (normalisation par les normes)
+        normes_documents = np.sqrt(self.mat_TF_IDF.power(2).sum(axis=1).A1) # Norme des vecteurs
+        similarites = produits_scalaires / (norme_requete * normes_documents)
+        similarites = np.nan_to_num(similarites) 
+
+        # Trier les scores et afficher les meilleurs résultats
+        results_df = pd.DataFrame({'doc_id': doc_ids, 'score_similarite': similarites}) # Tri par score décroissant
+        results_df = results_df.sort_values(by='score_similarite', ascending=False) # Tri par score décroissant
+        
+        # Filtrer les scores supérieurs à 0
+        results_df = results_df[results_df['score_similarite'] > 0]
+        
+        print(f"\n Résultats de la recherche pour : '{query}'")
+        
+        top_results = []
+        for index, row in results_df.head(top_n).iterrows():
+            doc_id = row['doc_id']
+            score = row['score_similarite']
+            doc = self.documents[doc_id]
+            
+            print(f"ID: {doc_id} | Score: {score:.4f} | Titre: {doc.titre}")
+            top_results.append((doc_id, score, doc))
+            
+        return top_results
