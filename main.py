@@ -1,6 +1,7 @@
-from code.scrapping_arxiv import scrapping_arxiv
-from code.scrapping_reddit import scrapping_reddit
-from classe.Corpus import Corpus
+from src.scrapers.scrapping_arxiv import scrapping_arxiv
+from src.scrapers.scrapping_reddit import scrapping_reddit
+from src.Corpus import Corpus
+from src.SearchEngine import SearchEngine
 import pandas as pd
 
 def save_corpus(sujet):
@@ -18,21 +19,22 @@ def load_corpus(sujet):
 if __name__=="__main__":
     sujet = "MachineLearning"
     sujet_corpus = Corpus(sujet)
+    engine = SearchEngine(sujet_corpus)
     
     # Vérification du singleton
-    #sujet_2 = Corpus(sujet)
-    #print(sujet_corpus is sujet_2)  
+    """sujet_2 = Corpus(sujet)
+    print(sujet_corpus is sujet_2) """
 
     # Charger ou sauvegarder le corpus
-    #save_corpus(sujet)
+    """save_corpus(sujet)"""
     load_corpus(sujet)
 
     # Liste de documents triés par titre et date
-    # sorted_docs = sujet_corpus.sort_title_and_date()
-    #print(pd.DataFrame.from_dict({k: vars(v) for k, v in sorted_docs.items()}, orient='index'))
+    """sorted_docs = sujet_corpus.sort_title_and_date()
+    print(pd.DataFrame.from_dict({k: vars(v) for k, v in sorted_docs.items()}, orient='index'))"""
     
     # Exemple d'accès à un document et son type
-    #print(sujet_corpus.documents[1].get_type())
+    """print(sujet_corpus.documents[1].get_type())"""
 
     # Exemple de recherche dans le corpus
     """ results = sujet_corpus.search("learning")
@@ -45,11 +47,20 @@ if __name__=="__main__":
     print(concordances_df)  """
 
     # Exemple de représentation textuelle du corpus
-    sujet_corpus.clean_texte()
-    sujet_corpus.build_vocab_et_frequences()
-    # print(sujet_corpus.frequences())
+    """sujet_corpus.construire_vocab()
+    print(sujet_corpus.vocab)
+    print(len(sujet_corpus.vocab))"""
 
-    print(sujet_corpus.build_tf_matrix_from_vocab())
+    """sujet_corpus.calculer_stats_vocabulaire()
+    print(sujet_corpus.vocab)"""
 
+    # Matrice Document x Mots
+    """sujet_corpus.mat_TFxIDF()
+    print(sujet_corpus.mat_TFxIDF())"""
+
+    print(engine.search_engine("deep learning", top_n=10))
+    
+
+    
 
     

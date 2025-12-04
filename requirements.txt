@@ -8,8 +8,10 @@ prawcore==2.4.0
 python-dateutil==2.9.0.post0
 pytz==2025.2
 requests==2.32.5
+scipy==1.16.3
 six==1.17.0
 tzdata==2025.2
 update-checker==0.18.0
 urllib3==2.5.0
 websocket-client==1.8.0
+xmltodict==1.0.2
