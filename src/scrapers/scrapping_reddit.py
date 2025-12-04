@@ -1,6 +1,6 @@
 import praw
 from datetime import datetime
-from src.RedditDocument import RedditDocument
+from src.doc.RedditDocument import RedditDocument
 
 def scrapping_reddit(sujet: str):
     reddit = praw.Reddit(

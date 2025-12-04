@@ -1,6 +1,7 @@
 from src.scrapers.scrapping_arxiv import scrapping_arxiv
 from src.scrapers.scrapping_reddit import scrapping_reddit
 from src.Corpus import Corpus
+from src.SearchEngine import SearchEngine
 import pandas as pd
 
 def save_corpus(sujet):
@@ -18,6 +19,7 @@ def load_corpus(sujet):
 if __name__=="__main__":
     sujet = "MachineLearning"
     sujet_corpus = Corpus(sujet)
+    engine = SearchEngine(sujet_corpus)
     
     # Vérification du singleton
     """sujet_2 = Corpus(sujet)
@@ -55,6 +57,8 @@ if __name__=="__main__":
     # Matrice Document x Mots
     """sujet_corpus.mat_TFxIDF()
     print(sujet_corpus.mat_TFxIDF())"""
+
+    print(engine.search_engine("deep learning", top_n=10))
     
 
     

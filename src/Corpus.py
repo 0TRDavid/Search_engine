@@ -1,4 +1,4 @@
-from src.Document import Document
+from src.doc.Document import Document
 from src.Author import Author
 import re
 import pickle
@@ -179,82 +179,3 @@ class Corpus:
         idf_vector = np.log(N / (df_vector + 1)) #Calcul du vecteur IDF pour tous les mots
         self.mat_TF_IDF = self.mat_TF.multiply(idf_vector) #Calcul de la matrice TF-IDF
         return self.mat_TF_IDF
-    
-    def vectoriser_requete(self, query: str):
-        """
-        Transforme une requête en un vecteur de poids TF-IDF.
-        Le vecteur est basé sur le vocabulaire et les IDF du corpus.
-        """
-        # Nettoyage de la requête (similaire à clean_texte)
-        query = query.lower()
-        query = re.sub(r'[^\w\s]', ' ', query)
-        query = re.sub(r'\s+', ' ', query).strip()
-        
-        mots_requete = query.split()
-        vecteur_requete = np.zeros(len(self.vocab))
-        
-        # Calcul des Term Frequencies (TF) locaux pour la requête
-        tf_local = {}
-        for mot in mots_requete:
-            if mot in self.vocab:
-                mot_id = self.vocab[mot]['id']
-                tf_local[mot_id] = tf_local.get(mot_id, 0) + 1
-                
-        # Application des poids TF-IDF
-        # Pour chaque mot de la requête, on calcule le poids TF-IDF: TF * IDF
-        for mot_id, tf in tf_local.items():
-            # Récupération de l'IDF (log(N / (df + 1)))
-            N = len(self.documents)
-            df = self.vocab[list(self.vocab.keys())[mot_id]]['doc_frequency']
-            idf = np.log(N / (df + 1))
-            
-            # Poids TF-IDF dans le vecteur requête
-            vecteur_requete[mot_id] = tf * idf
-            
-        return vecteur_requete 
-    
-    def search_engine(self, query: str, top_n: int = 10):
-        """
-        Recherche des documents similaires à la requête de l'utilisateur.
-
-        Args:
-            query (str): La requête de recherche.
-            top_n (int): Le nombre maximum de meilleurs résultats à retourner.
-        """
-        # Construction de la matrice TFxIDF
-        if self.mat_TF_IDF is None:
-            self.mat_TFxIDF()
-
-        vecteur_requete = self.vectoriser_requete(query)
-        
-        # Si le vecteur requête est nul, aucun mot n'est dans le vocabulaire
-        if np.linalg.norm(vecteur_requete) == 0:
-            print("Aucun mot de votre requête n'a été trouvé dans le vocabulaire du corpus.")
-            return []
-
-        produits_scalaires = self.mat_TF_IDF.dot(vecteur_requete) # Calculer le produit scalaire (numérateur de la similarité cosinus)
-        doc_ids = list(self.documents.keys()) #Lier les ID aux documents
-        norme_requete = np.linalg.norm(vecteur_requete) # Calculer la similarité cosinus (normalisation par les normes)
-        normes_documents = np.sqrt(self.mat_TF_IDF.power(2).sum(axis=1).A1) # Norme des vecteurs
-        similarites = produits_scalaires / (norme_requete * normes_documents)
-        similarites = np.nan_to_num(similarites) 
-
-        # Trier les scores et afficher les meilleurs résultats
-        results_df = pd.DataFrame({'doc_id': doc_ids, 'score_similarite': similarites}) # Tri par score décroissant
-        results_df = results_df.sort_values(by='score_similarite', ascending=False) # Tri par score décroissant
-        
-        # Filtrer les scores supérieurs à 0
-        results_df = results_df[results_df['score_similarite'] > 0]
-        
-        print(f"\n Résultats de la recherche pour : '{query}'")
-        
-        top_results = []
-        for index, row in results_df.head(top_n).iterrows():
-            doc_id = row['doc_id']
-            score = row['score_similarite']
-            doc = self.documents[doc_id]
-            
-            print(f"ID: {doc_id} | Score: {score:.4f} | Titre: {doc.titre}")
-            top_results.append((doc_id, score, doc))
-            
-        return top_results

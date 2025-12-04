@@ -3,7 +3,7 @@ import certifi
 import urllib.request
 import xmltodict
 from datetime import datetime
-from src.ArxivDocument import ArxivDocument
+from src.doc.ArxivDocument import ArxivDocument
 
 def scrapping_arxiv(query: str):
     context = ssl.create_default_context(cafile=certifi.where())
