@@ -1,10 +1,14 @@
 from src.doc.Document import Document
 from src.Author import Author
+from src.scrapers.scrapping_arxiv import scrapping_arxiv
+from src.scrapers.scrapping_reddit import scrapping_reddit
+
 import re
 import pickle
 import pandas as pd
 from scipy.sparse import csr_matrix
 import numpy as np
+from tqdm import tqdm
 
 class Corpus:
     _instance = None
@@ -26,6 +30,18 @@ class Corpus:
             self.mat_TF = None
             self.mat_TF_IDF = None
             self.cleaned = True
+    
+    def save_corpus(self, sujet):
+        liste = scrapping_reddit(sujet) + scrapping_arxiv(sujet)
+
+        for doc in tqdm(liste, desc="Ajout des documents au corpus"):
+            self.add_document(doc)
+
+        self.save(f"{sujet}_corpus.pkl")
+
+    def load_corpus(self, sujet):
+        self.load(f"{sujet}_corpus.pkl")
+
 
     def add_document(self, document: Document):
         """Ajoute un document au corpus et met à jour les informations de l'auteur."""
@@ -84,7 +100,7 @@ class Corpus:
     
     def clean_texte(self):
         """Nettoie le texte : minuscules, suppression ponctuation/URL, gestion accents."""
-        for doc in self.documents.values():
+        for doc in tqdm(self.documents.values(), desc="Nettoyage des textes"):
             texte = doc.texte.lower() # Mise en minuscule
             texte = re.sub(r'http\S+|www\.\S+', '', texte) # Supprime les URLs
             texte = re.sub(r'[^\w\s]', ' ', texte) # Remplace ponctuation par espace
@@ -109,7 +125,7 @@ class Corpus:
 
         # Création du dictionnaire vocab
         self.vocab = {}
-        for idx, mot in enumerate(mots_tries):
+        for idx, mot in tqdm(enumerate(mots_tries), desc="Construction du vocabulaire", total=len(mots_tries)):
             self.vocab[mot] = {
                 'id': idx,            
                 'total_occurrence': 0,   
@@ -126,7 +142,7 @@ class Corpus:
         n_docs, n_mots = len(self.documents), len(self.vocab)
         rows, cols, data = [], [], []
 
-        for doc_idx, doc in enumerate(self.documents.values()):
+        for doc_idx, doc in tqdm(enumerate(self.documents.values()), desc="Construction de la matrice TF", total=len(self.documents)):
             mots_list = doc.texte.split()          
             compte_local = {}
 
@@ -173,7 +189,7 @@ class Corpus:
 
         N, n_mots = len(self.documents), len(self.vocab)
         df_vector = np.zeros(n_mots) #Récupération des fréquences documentaires (DF) pour tous les mots
-        for mot, infos in self.vocab.items():
+        for mot, infos in tqdm(self.vocab.items(), desc="Calcul des fréquences documentaires"):
             df_vector[infos['id']] = infos['doc_frequency']
 
         idf_vector = np.log(N / (df_vector + 1)) #Calcul du vecteur IDF pour tous les mots

@@ -1,6 +1,7 @@
 import re
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
 class SearchEngine:
     def __init__(self, corpus):
@@ -21,14 +22,14 @@ class SearchEngine:
         
         # Calcul des Term Frequencies (TF) locaux pour la requête
         tf_local = {}
-        for mot in mots_requete:
+        for mot in tqdm(mots_requete, desc="Vectorisation de la requête"):
             if mot in self.corpus.vocab:
                 mot_id = self.corpus.vocab[mot]['id']
                 tf_local[mot_id] = tf_local.get(mot_id, 0) + 1
                 
         # Application des poids TF-IDF
         # Pour chaque mot de la requête, on calcule le poids TF-IDF: TF * IDF
-        for mot_id, tf in tf_local.items():
+        for mot_id, tf in tqdm(tf_local.items(), desc="Calcul des poids TF-IDF pour la requête"):
             # Récupération de l'IDF (log(N / (df + 1)))
             N = len(self.corpus.documents)
             df = self.corpus.vocab[list(self.corpus.vocab.keys())[mot_id]]['doc_frequency']
@@ -58,22 +59,21 @@ class SearchEngine:
             print("Aucun mot de votre requête n'a été trouvé dans le vocabulaire du corpus.")
             return []
 
+        # Calcul des similarités cosinus entre la requête et les documents
+        correction = 1*10e-10  # Pour éviter la division par zéro
         produits_scalaires = self.corpus.mat_TF_IDF.dot(vecteur_requete) # Calculer le produit scalaire (numérateur de la similarité cosinus)
-        doc_ids = list(self.corpus.documents.keys()) #Lier les ID aux documents
         norme_requete = np.linalg.norm(vecteur_requete) # Calculer la similarité cosinus (normalisation par les normes)
-        normes_documents = np.sqrt(self.corpus.mat_TF_IDF.power(2).sum(axis=1).A1) # Norme des vecteurs
-        similarites = produits_scalaires / (norme_requete * normes_documents)
-        similarites = np.nan_to_num(similarites) 
+        normes_documents = np.sqrt(self.corpus.mat_TF_IDF.power(2).sum(axis=1).A1)
+        similarites = produits_scalaires / (norme_requete * normes_documents + correction)
 
         # Trier les scores et afficher les meilleurs résultats
+        doc_ids = list(self.corpus.documents.keys()) #Lier les ID aux documents
         results_df = pd.DataFrame({'doc_id': doc_ids, 'score_similarite': similarites}) # Tri par score décroissant
         results_df = results_df.sort_values(by='score_similarite', ascending=False) # Tri par score décroissant
         
         # Filtrer les scores supérieurs à 0
         results_df = results_df[results_df['score_similarite'] > 0]
-        
-        print(f"\n Résultats de la recherche pour : '{query}'")
-        
+                
         top_results = []
         for index, row in results_df.head(top_n).iterrows():
             doc_id = row['doc_id']

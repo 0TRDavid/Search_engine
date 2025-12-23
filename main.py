@@ -1,23 +1,8 @@
-from src.scrapers.scrapping_arxiv import scrapping_arxiv
-from src.scrapers.scrapping_reddit import scrapping_reddit
 from src.Corpus import Corpus
 from src.SearchEngine import SearchEngine
-import pandas as pd
-
-def save_corpus(sujet):
-    a, b = scrapping_reddit(sujet), scrapping_arxiv(sujet)
-    liste = a + b
-
-    for doc in liste:
-        sujet_corpus.add_document(doc)
-
-    sujet_corpus.save(f"{sujet}_corpus.pkl")
-
-def load_corpus(sujet):
-    sujet_corpus.load(f"{sujet}_corpus.pkl")
 
 if __name__=="__main__":
-    sujet = "MachineLearning"
+    sujet = "NoSQL"
     sujet_corpus = Corpus(sujet)
     engine = SearchEngine(sujet_corpus)
     
@@ -26,8 +11,8 @@ if __name__=="__main__":
     print(sujet_corpus is sujet_2) """
 
     # Charger ou sauvegarder le corpus
-    """save_corpus(sujet)"""
-    load_corpus(sujet)
+    sujet_corpus.save_corpus(sujet)
+    sujet_corpus.load_corpus(sujet)
 
     # Liste de documents triés par titre et date
     """sorted_docs = sujet_corpus.sort_title_and_date()
