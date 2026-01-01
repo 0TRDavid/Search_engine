@@ -26,7 +26,7 @@ if __name__=="__main__":
     print(sujet_corpus is sujet_2) """
 
     # Charger ou sauvegarder le corpus
-    """save_corpus(sujet)"""
+    save_corpus(sujet)
     load_corpus(sujet)
 
     # Liste de documents triés par titre et date
