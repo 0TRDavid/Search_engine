@@ -7,7 +7,7 @@ class SearchEngine:
     def __init__(self, corpus):
         self.corpus = corpus
 
-    def vectoriser_requete(self, query: str):
+    def vectorise_request(self, query: str):
         """
         Transforme une requête en un vecteur de poids TF-IDF.
         Le vecteur est basé sur le vocabulaire et les IDF du corpus.
@@ -52,7 +52,7 @@ class SearchEngine:
         if self.corpus.mat_TF_IDF is None:
             self.corpus.mat_TFxIDF()
 
-        vecteur_requete = self.vectoriser_requete(query)
+        vecteur_requete = self.vectorise_request(query)
         
         # Si le vecteur requête est nul, aucun mot n'est dans le vocabulaire
         if np.linalg.norm(vecteur_requete) == 0:
