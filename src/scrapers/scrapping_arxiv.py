@@ -6,8 +6,9 @@ from datetime import datetime
 from src.doc.ArxivDocument import ArxivDocument
 
 def scrapping_arxiv(query: str):
+    """Scrape des articles depuis arXiv en fonction d'un mot-clé donné."""
     context = ssl.create_default_context(cafile=certifi.where())
-    url = f'http://export.arxiv.org/api/query?search_query=all:{query}&start=0&max_results=1000'
+    url = f'http://export.arxiv.org/api/query?search_query=all:{query}&start=0&max_results=10000'
 
     with urllib.request.urlopen(url, context=context) as response:
         data = response.read().decode("utf-8")
@@ -35,12 +36,5 @@ def scrapping_arxiv(query: str):
             date_pub = None
 
         # Création de l’objet Document
-        documents.append(ArxivDocument(titre, auteur, date_pub, url_article, texte, co_auteur))
-
+        documents.append(ArxivDocument(titre, auteur, date_pub, texte, url_article, co_auteur))
     return documents
-
-
-if __name__ == "__main__":
-    liste_docs = scrapping_arxiv()
-    for d in liste_docs[:5]:
-        print(d)

@@ -20,14 +20,7 @@ def scrapping_reddit(sujet: str):
         texte = post.selftext.strip() if post.selftext else ""
         nb_comments = post.num_comments
 
-        #doc = Document(titre, auteur, date_pub, url, texte)
         doc = RedditDocument(titre, auteur, date_pub, texte, url, nb_comments)
         documents.append(doc)
 
     return documents
-
-
-if __name__ == "__main__":
-    liste_docs = scrapping_reddit()
-    for d in liste_docs[:5]:
-        print(d)

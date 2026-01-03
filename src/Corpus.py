@@ -1,31 +1,54 @@
 from src.doc.Document import Document
 from src.Author import Author
+from src.scrapers.scrapping_arxiv import scrapping_arxiv
+from src.scrapers.scrapping_reddit import scrapping_reddit
+
 import re
 import pickle
 import pandas as pd
 from scipy.sparse import csr_matrix
 import numpy as np
+from tqdm import tqdm
 
 class Corpus:
-    _instance = None
+    """Classe représentant un corpus de documents liés à un sujet spécifique."""
+
+    _instance = None # Attribut pour le singleton
 
     def __new__(cls, *args, **kwargs):
+        """Implémentation du pattern Singleton pour la classe Corpus"""
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
     
     def __init__(self, corpus: str):
+        """Initialisation du corpus avec un nom, des documents et des auteurs"""
         if not hasattr(self, 'initialized'):
             self.initialized = True
             self.nom = corpus
             self.documents = {}
             self.authors = {}
             self.id_counter = 0
+
             # ajout de nouveaux attributs
             self.vocab = None
             self.mat_TF = None
             self.mat_TF_IDF = None
             self.cleaned = True
+    
+    def save_corpus(self, sujet):
+        """Scrape des documents et crée un corpus à partir d'un sujet donné et le sauvegarde"""
+        liste = scrapping_reddit(sujet) + scrapping_arxiv(sujet)
+
+        for doc in tqdm(liste, desc="Ajout des documents au corpus"):
+            self.add_document(doc)
+
+        self.save(f"{sujet}_corpus.pkl")
+
+    def load_corpus(self, sujet):
+        """Charge un corpus sauvegardé à partir d'un sujet donné"""
+        self.load(f"{sujet}_corpus.pkl")
+
 
     def add_document(self, document: Document):
         """Ajoute un document au corpus et met à jour les informations de l'auteur."""
@@ -84,7 +107,7 @@ class Corpus:
     
     def clean_texte(self):
         """Nettoie le texte : minuscules, suppression ponctuation/URL, gestion accents."""
-        for doc in self.documents.values():
+        for doc in tqdm(self.documents.values(), desc="Nettoyage des textes"):
             texte = doc.texte.lower() # Mise en minuscule
             texte = re.sub(r'http\S+|www\.\S+', '', texte) # Supprime les URLs
             texte = re.sub(r'[^\w\s]', ' ', texte) # Remplace ponctuation par espace
@@ -92,11 +115,8 @@ class Corpus:
             doc.texte = texte
             self.cleaned = True
 
-    def construire_vocab(self):
-        """
-        Construire le dictionnaire vocabulaire (vocab).
-        Les clefs sont les mots, la valeur est un dico avec l'id unique.
-        """
+    def constuct_voc(self):
+        """Construire le dictionnaire vocabulaire (vocab). Les clefs sont les mots, la valeur est un dico avec l'id unique."""
         # Nettoyage des textes
         if not hasattr(self, 'cleaned') or not self.cleaned:
             self.clean_texte()
@@ -109,7 +129,7 @@ class Corpus:
 
         # Création du dictionnaire vocab
         self.vocab = {}
-        for idx, mot in enumerate(mots_tries):
+        for idx, mot in tqdm(enumerate(mots_tries), desc="Construction du vocabulaire", total=len(mots_tries)):
             self.vocab[mot] = {
                 'id': idx,            
                 'total_occurrence': 0,   
@@ -117,16 +137,14 @@ class Corpus:
             }
 
     def create_mat_TF(self):
-        """
-        Construire la matrice Documents x Mots (TF).
-        """
+        """Construire la matrice Documents x Mots (TF)."""
         # Construction de la liste vocabulaire
-        self.construire_vocab()
+        self.constuct_voc()
 
         n_docs, n_mots = len(self.documents), len(self.vocab)
         rows, cols, data = [], [], []
 
-        for doc_idx, doc in enumerate(self.documents.values()):
+        for doc_idx, doc in tqdm(enumerate(self.documents.values()), desc="Construction de la matrice TF", total=len(self.documents)):
             mots_list = doc.texte.split()          
             compte_local = {}
 
@@ -147,11 +165,8 @@ class Corpus:
         
         return self.mat_TF 
 
-    def calculer_stats_vocabulaire(self):
-        """
-        À partir de la matrice mat_TF, calculer les stats globales 
-        et mettre à jour le dictionnaire vocab.
-        """
+    def stats_voc(self):
+        """À partir de la matrice mat_TF, calculer les stats globales et mettre à jour le dictionnaire vocab."""
         if self.mat_TF is None:
              self.create_mat_TF()
 
@@ -165,15 +180,13 @@ class Corpus:
             infos['doc_frequency'] = int(doc_frequencies[mot_id])
 
     def mat_TFxIDF(self):
-        """
-        Calcule et retourne la matrice TF-IDF à partir de la matrice TF.
-        """
+        """Calcule et retourne la matrice TF-IDF à partir de la matrice TF."""
         if self.mat_TF is None:
              self.create_mat_TF()
 
         N, n_mots = len(self.documents), len(self.vocab)
         df_vector = np.zeros(n_mots) #Récupération des fréquences documentaires (DF) pour tous les mots
-        for mot, infos in self.vocab.items():
+        for mot, infos in tqdm(self.vocab.items(), desc="Calcul des fréquences documentaires"):
             df_vector[infos['id']] = infos['doc_frequency']
 
         idf_vector = np.log(N / (df_vector + 1)) #Calcul du vecteur IDF pour tous les mots
