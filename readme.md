@@ -1,5 +1,8 @@
 # Moteur de Recherche (Reddit & Arxiv)
 
+**Auteur :** David TRUONG
+**Dépôt GitHub :** [https://github.com/0TRDavid/Search_engine](https://github.com/0TRDavid/Search_engine)
+
 Ce projet consiste à développer un moteur de recherche d'information sans utiliser de bibliothèques comme scikit-learn ou NLTK. Il collecte des données textuelles depuis Reddit et Arxiv pour construire un corpus et permettre des recherches basées sur la similarité textuelle (TF-IDF).
 
 ## Objectifs
